@@ -1,11 +1,11 @@
 ---
-title: "分析报告"
-author: "张三"
-date: "2020年3月"
+title: ""
+author: ""
+date: ""
 institute: 中南财经政法大学统计与数学学院
 csl: ./style/chinese-gb7714-2015-numeric.csl
 css: ./style/markdown.css
-bibliography: [./Bibfile.bib]
+bibliography: [./ref.bib]
 eqnPrefixTemplate: ($$i$$)
 link-citations: true
 linkReferences: true
@@ -21,7 +21,7 @@ knitr::opts_chunk$set(echo = TRUE, results = 'hide')
 knitr::opts_chunk$set(warning = FALSE, message=FALSE)
 knitr::opts_chunk$set(fig.align="center"
                       ## ,out.width="0.9\\textwidth" # latex
-                      ,out.width="80%" # for both latex and html
+                      ,out.width="60%" # for both latex and html
                       ,fig.width=5, fig.height=3
                       )
 ```
@@ -35,67 +35,302 @@ Sys.setlocale("LC_ALL", "Chinese")
 library(reticulate)
 ```
 
-**TODO**
+# 引言
 
-- [x] 表格如何输出
-- [ ] Bib文件如何整理
+2009年10月30日，中国创业板市场正式成立，旨在为新设立公司或中小型企业等没有达到主
+板上市条件的公司提供筹资途径的债券交易市场。创业板市场是主板市场的一个必要补充，
+又被称为二板市场。在创业板上市的这些公司或中小型企业自身抗风险能力较差，在面对危
+机时可能无法灵活应对，因此分析和预测创业板市场波动对于制定相应策略、规避金融风
+险显得尤为重要。
 
-# 简介
+波动性通常指金融资产价格的波动性，可以用来预测
+金融市场的风险，因此在分析股票市场波动及其预测方面有着重要的意义。但由于波动率无法直
+接被观测到，所以一般通过观察金融资产的收益率的特征来代替观察波动率的特征，进而得到
+股市的波动率。
 
-### R 代码
+波动率主要有历史波动率、预期波动率、隐含波动率、未来波动率等几种类型。历史波动
+率和隐含波动率是在实际中运用最多的两种波动率。
 
-R代码 ^[脚注内容]
+(1)历史波动率
 
-```{r, results='markup'}
-2+3
+历史波动率是基于过去的统计分析，并假设过去延伸到未来，计算标的资产在一段时间内的标准差。根据实际情况的不同，所
+使用的数据处理方式也就不同，目前普遍使用的历史波动率预测方法有：ARCH、GARCH等。
+一般的我们用资产收益率的标准差来代表金融资产的波动率，表达式如下：
+$$\sigma^{2}=\frac{1}{r-1}\sum_{i=1}^{T}(R_{i}-R)^{2}$$
+其中，$\sigma ^{2}$即波动率，$R_{i}$即第$i$天的资产收益率，$R$即$T$天内的平均资产收益率。
+
+(2)隐含波动率
+利用期权价格，从期权定价模型中可以推导出隐含波动率。它是衡量期权市场标的资产不确定性的一个指标。
+
+本文选
+用创业板市场的创业板指数作为整个市场的代表，研究创业板市场波动率变动情况并进行预
+测，为整个市场的波动情况提供相应的建议。
+
+# 文献综述
+
+耿庆峰(2012)对创业板指数日收盘价的波动率进行研究，经过检验，我国创业板市场存在明
+显的ARCH效应，而且能够较好的拟合GARCH(1,1)和EGARCH(1,1)模型，但创业板市场收益与
+波动关联性不强[@耿庆峰2012]。耿庆峰(2013)在对创业板市场波动机理分析后，运用VaR模
+型对其风险进行定量测度，结果表明，运用参数法创业板市场股价波动风险可以得到较好的
+而估计，由于考虑了收益率波动的非对称性，EGARCH模型相比其他模型的估计效果要好[@耿庆峰2013]。林德钦(2014)使用GARCH族模型对创业板指数波动率进行实证分析，通过对比各个模型波动率预测的效果，发现AR(1)-GARCH(1,1)模型对创业板指数波动率拟合最为有效[@林德钦2014]。陈赐和王延新(2018)基于GARCH族模型对创业板指数
+收益率的波动性进行研究，发现创业板指数序列的特征表现为：尖峰厚尾和异方差性，适合使用
+GARCH族模型建模。最终实证研究表明，GARCH-M模型能够很好地描述创业板指的波动规律[@陈赐2018]。李家山(2018)使用GARCH族模型对我国创业板指数日收益率的波动性特征进行了实证研究，结
+果表明，创业板指数日收益率波动存在着明显的非对称性效应、杠杆效应，投资创业板市场往往要承担更多风险[@李家山2018]。
+
+# 数据预处理
+
+本文的研究对象是中国创业板市场，选用创业板市场的创业板指数作为代表。共选取了从
+2010年9月30日至2020年12月31日创业板指每个交易日的日收盘价(交易日除去双休日和节假
+日)，数据来源国泰安数据库，共计2494组数据。本文利用R软件进行相关数据的处理及分析
+以及后续建模。
+
+首先对这些数
+据进行预处理获得对数收益率序列。对数收益率的表
+达式为：
+$$r_t=lnP_t-lnP_{t-1}$$
+，其中$P_t$表示创业板指第$t$日的收盘价，$P_{t-1}$
+表示第$t-1$日创业板指的日收盘价。
+
+```{r import-data}
+## 准备
+rm(list=ls())
+options(digits=4)
+options(scipen=100)
+graphics.off()
+
+## 加载包
+library(forecast)
+library(tseries) 
+library(fBasics) 
+library(knitr)
+library(kableExtra) #美化输出表格的package
+library(fGarch)
+
+## 载入数据
+data <- read.csv("./data/cybz.csv",header=T)
+# data <- read.csv("./thesis/data/cybz.csv",header=T)
+cybz <- data[, 5]
+cybz.rt <- data[, 8]
+cybz.date <- as.Date(data[,1])
+
+#计算对数收益率
+# cybz <- c(cybz)
+# cybz.rt <- diff(log(cybz))
+# cybz.rt <- na.omit(cybz.rt)
 ```
 
-### Python 代码
+## 数据特征分析
 
-python代码
+创业板指对数收益率的基本统计特征如下表所示：
 
-```{python, results='markup'}
-3+5
+```{r stat1, results='markup',fig.pos="H"}
+cybz.rt1 <- basicStats(cybz.rt)
+cybz.rt2 <- cbind("统计量值",as.data.frame(t(cybz.rt1[c(7,14,15,16),])))
+colnames(cybz.rt2) <- c("统计量","均值","标准差","偏态系数","峰态系数")
+
+knitr::kable(cybz.rt2,row.names =F, align = c("l", "c", "c", "c", "c"),
+caption="创业板指对数收益率描述性分析结果",longtable = TRUE, booktabs = TRUE,linesep="",escape = F)%>%kable_styling(full_width = T)%>%column_spec(1:5,width=c("3cm","2.5cm","2.5cm","2.5cm","2.5cm"))
 ```
 
-python图形
+均值为0.00046，偏度为-0.5153<0，说明该数据左偏；峰度系数为2.162<3，说明该对数收益率
+序列呈现出平峰的分布状态。可以初步判断该数据不服从正态分布。
 
-```{python}
-import matplotlib.pyplot as plt
-plt.plot([0,1])
+创业板指对数收益率时序图如图所示。可以
+看出，创业板指收盘价在2010-2014年波动幅度比较平稳，但是在2015年有一个剧烈的波动，这是由于我国2015年的股灾。创业板指对数收益率则相对保持
+平稳，在2012-2014年波动幅度较小，但在2015-2016年波动幅度却比较大，而在2016年后
+却只有很小的波动幅度，这表现出了很明显的集群效应，说明创业板指收益率可能存在异方
+差，即存在ARCH效应，后续会进行验证。
+
+接下来通过JB检验判断数据是否服从正态分布，根据检验统计量计算出的p值远小于给定的显著性水平
+0.05，因此拒绝样本服从正态分布原假设。创业板指对数收益率时间序列不服从正态分
+布。
+
+```{r}
+#正态性检验
+jarque.bera.test(cybz.rt)   #非正态
 ```
 
-# 使用说明
-
-R输出表格
-
-```{r, results='markup'}
-knitr::kable(head(trees))
+```{r ts,fig.width=12,fig.height=8,fig.cap="创业板指对数收益率时序图",fig.pos="H", dev=c("png","cairo_pdf"),fig.align='center',dev.args=list(family="Microsoft YaHei UI Light"),out.width="90%"}
+plot(cybz.date,cybz,type="l",xlab="日期",ylab="结算价",ylim=c(500,4000),cex.lab=1.5,cex.axis=1.5)
 ```
 
-python 表格输出
+# 随机性与平稳性检验
 
-```{python, results='markup'}
-import pandas as pd
-dat=pd.DataFrame([['中文',2,3],['英文',4,6]])
+在对创业板指对数收益率数据进行数据基本特征分析之后，需要该数据是否平稳以及是否非
+随机，这是进行建模分析之前的第一步。
+
+## 纯随机性检验
+
+纯随机性检验是用于检验序列是否为白噪声序列，不是白噪声序列才能进行下一步的分析。
+本文采用LB检验，检验结果显示延迟6阶及12阶的检验p值分别为0.04和0.02，都小于给定的
+显著性水平$\alpha=0.05$，表明创业板指对数收益率数据为非白噪声序列。
+
+```{r}
+# 纯随机性检验
+for (i in 1:2) {print(Box.test(cybz.rt,lag = 6*i,type = 'Lj'))} #非白噪声
 ```
 
-```{r eval=T, results='markup'}
-knitr::kable(py$dat)
+## 平稳性检验
+
+考虑到异方差性，本文对创业板指对数收益率时间序列样本数据进行了PP检验，用于考察数据的平
+稳性，检验结果的p值都小于给定的显著性水平$\alpha=0.05$，表明该时间序列数据为平稳的时间序
+列。
+
+```{r}
+#平稳性检验
+pp.test(cybz.rt) #平稳
 ```
 
-行内公式 $\alpha+\hat{\beta}$ 。
+# 自相关与偏自相关检验
 
-行间公式
+```{r acf-pacf,fig.width=12,fig.height=8,fig.cap="创业板指收益率自相关图和偏自相关图",fig.pos="H", dev=c("png","cairo_pdf"),fig.align='center',dev.args=list(family="Microsoft YaHei UI Light"),out.width="90%"}
+#自相关性检验
+par(mfrow=c(2,1))
+acf(cybz.rt,main="ACF",xlab="滞后期",ylab="ACF值",cex.axis=1.5, cex.lab=1.5,cex.main=2) #自相关图
+pacf(cybz.rt,main="PACF",xlab="滞后期",ylab="PACF值",cex.axis=1.5, cex.lab=1.5,cex.main=2) #偏自相关图
+```
 
-$$\bar x = \sum_{i=1}^n x_i +\bar y$$
+收益率序列通过了检验，是平稳序列但不是白噪声序列，因此可以建立ARMA(p,q)模型来提取该
+序列中的信息。从自相关系数与偏相关系数图中可以看出，自相关系数表现为1阶拖尾，偏自相关系
+数表现为1阶拖尾，另外通过R语言中的auto.arima函数自动定阶，最终得出的结果也是ARMA(1,1)，此时模型的AIC和BIC值
+最小，分别为-12516和-12498，因此收益率序列水平信息可以使用ARMA(1,1)模型进行提
+取。
 
-$$X \sim  N(0,1)$$
+建立ARMA模型后，通过LB检验判断残差序列的纯随机性。结果显示延迟6阶检验结果的p值为0.8，延迟12阶检验结果的p值为0.5，都大于给定的显著性水平$\alpha=0.05$，没有充分的理由
+拒绝原假设，即残差序列为无自相关性，这表明收益率序列的水平信息已经提取完毕。
 
+```{r}
+auto.arima(cybz.rt)
+```
+```{r}
+fit <- arima(cybz.rt,order = c(0,0,2))
+cybz.rt.r <- stats::residuals(fit)
+for (i in 1:2) {print(Box.test(cybz.rt.r,lag = 6*i,type = 'Lj'))} 
+```
 
-## 文件结构 
+# ARCH效应检验
 
-## 使用方法
+为了明确数据是否适用于GARCH模型，还需要对数据进行ARCH效应的检验，如果数据存在ARCH效应，则需要进行GARCH模型的拟合。
+
+对波动信息的提取，可以先观察残差序列图，如下图所示：
+
+```{r residual, fig.cap="创业板指收益率残差序列图",fig.width=12,fig.height=8,fig.pos="H",dev=c("png","cairo_pdf"),fig.align='center',dev.args=list(family="Microsoft YaHei UI Light"),out.width="90%"}
+plot(cybz.date,cybz.rt.r,type="l",xlab="日期",ylab="残差",cex.axis=1.5, cex.lab=1.5)
+```
+
+可以看出，残差序列在大部分时间是稳定的，但在某些时期，其波动连续较大，而在某些时
+期，其波动连续较小，表现出集群效应。所以接下来对数据进行ARCH效应的检验。本文使用
+的是Portmanteau Q检验，其本质是对残差序列的平方进行随机性检验，来判断是否具有相
+关性。检验的p值远小于$\alpha=0.05$，拒绝原假设，表明残差序列具有长期相关性，下一步可以进
+行GARCH模型的构造。
+
+```{r}
+#Portmanteau Q检验
+for (i in 1:6) {print(Box.test(cybz.rt.r^2,lag = i,type = 'Lj'))}#有ARCH效应
+```
+
+# GARCH模型的估计与检验
+
+## 模型构建
+
+在收益波动率的问题上，残差数据的异方差函数往往具有长期自相关性。当延迟阶数较大时，ARCH模型会导致很高的移动平均阶数，进而影响模型精确度和拟合的效果。因此本
+文使用GARCH模型。GARCH模型可以很好地描
+述外部冲击形成的波动集聚性，被广泛应用于金融市场波动性的分析和预测。一般选取
+GARCH(1,1)模型进行拟合。
+
+为了准确的描述残差序列的性质，在对残差序列建立GARCH类模型
+时，可以选择正态分布(norm)、t分布(std)、有偏t分布(sstd)和广义误差分布(ged)这
+4种分布。本文根据参数显著性和AIC、BIC值取值最小，对数似然值取值（LLK）最大的准则
+来选取最优的模型。详细结果如下表所示。
+
+|分布类型|Log Likelihood|AIC|BIC|
+|:---:|:---:|:---:|:---:|
+|正态分布|6488|-5.199|-5.190|
+|t分布|6531|-5.234|-5.222|
+|有偏t分布|6540|-5.240|-5.226|
+|GED分布|6526|-5.229|-5.217|
+
+由表可知，对于GARCH(1,1)模型，在条件分布为有偏t分布时，极大似然估计量最大并且AIC
+值和BIC值最小，基于有偏t分布的GARCH类模型可以更好地拟合。
+
+GARCH(1,1)模型回归结果如下表：
+
+|变量|估计值|标准误差|t值|p值|
+|:---:|:---:|:---:|:---:|:---:|
+|$\mu$|-0.000027159|0.000323432|-0.084|0.933|    
+|$\omega$|0.000002562|0.000001110|2.308|0.021|
+|$\alpha_{1}$|0.057373835|0.008853436|6.480|0.0000000000915|
+|$\beta_{1}$|0.937088566|0.009444615|99.219|< 0.0000000000000002|
+|skew|0.890155626|0.025867122|34.413|< 0.0000000000000002|
+|shape|8.164594448|1.256509792|6.498|0.0000000000815|
+
+```{r}
+# # 拟合GARCH(1,1)模型，高斯分布
+# model = garchFit(~1+garch(1,1),data=cybz.rt.r,trace=F)
+# summary(model)
+
+# # 拟合GARCH(1,1)模型，t分布
+# model2 = garchFit(~1+garch(1,1),data=cybz.rt.r,trace=F,cond.dist="std")
+# summary(model2)
+
+# # 拟合GARCH(1,1)模型，GED分布
+# model4 = garchFit(~1+garch(1,1),data=cybz.rt.r,trace=F,cond.dist="ged")
+# summary(model4)
+
+# 拟合GARCH(1,1)模型，有偏t分布
+model3 = garchFit(~1+garch(1,1),data=cybz.rt.r,trace=F,cond.dist="sstd")
+summary(model3)
+
+vol = volatility(model3) #模型的拟合波动率序列
+resi=residuals(model3,standardize=T) #标准化残差
+upp = -0.000027159 + 2*vol
+low = -0.000027159 - 2*vol
+```
+
+基于有偏t分布的GARCH(1,1)模型的表达式为：
+$$
+\left\{\begin{array}{l}
+\ r_{t}=2.72 \times 10^{-5} \ a_{t} \\
+a_{t}=\sigma_{t} \varepsilon_{t}, \varepsilon_{t} \sim t^{*}_{0.89,8.16} \\
+\sigma_{t}^{2}=2.56 \times 10^{-6} +0.0574 a_{t-1}^{2}+0.9371 \sigma_{t-1}^{2}
+\end{array}\right.
+$$
+
+从表中可以看出，各项系数均显著异于0，且$\alpha_{1}+\beta_{1}<1$且接近于1，满足GARCH(1,1)模
+型的约束条件，说明收益率波动存在集聚性和持续性，模型的拟合效果比较显著。
+
+下图给出了对数收益率的时序图，上下两条线表示95%的点预测区间，区间公式为
+$\hat{\mu} \pm \hat{\sigma}_{t}$，可以看出，除了个别异常值之外，所有的数据都在预测
+区间内，表明模型的拟合效果较为显著。
+
+```{r intervals, eval=T,fig.width=12,fig.height=8,fig.cap="对数收益率时序图及预测区间",fig.pos="H",dev=c("png","cairo_pdf"),fig.align='center',dev.args=list(family="Microsoft YaHei UI Light"),out.width="90%"}
+plot(cybz.date,cybz.rt,type="l",xlab="日期",cex.main=2,ylab="对数收益率",las=0,cex.lab=1.5,cex.axis=1.5)
+lines(cybz.date,upp,lty=2)
+lines(cybz.date,low,lty=2)
+abline(h = c(-0.000027159))
+```
+
+## 模型残差序列检验
+
+为了验证模型的有效性及合理性，拟合模型的残差序列需要进行一些检验。模型合理，则其
+标准化残差为独立同分布的随机变量序列。
+
+本文使用了Ljung-Box检验，检验的原假设为序列不存在自相关，检验结果显示延迟各阶的p
+值均大于显著性水平$\alpha=0.05$，接受原假设，模型残差序列符合零均值、同方差且独立的白噪声序列，模型
+的拟合效果较好。
+
+# 总结
+
+本文选取了2010年9月30日至2020年12月31日的创业板指数每个交易日的日收盘价数据，研
+究了创业板指收益率与波动率的特征，通过构建GARCH模型拟合创业板指波动进行实证分
+析。运用R软件，确定了ARMA模型的阶数，构建了ARMA(1,1)模
+型，并通过对数据残差序列的检验，发现其具有显著的ARCH效应，因此引入了广义条件异方
+差模型（GARCH模型）。在比较了四个分布下GARCH(1,1)模型的参数显著性、信息准则以及模型结构的复杂
+程度，最终选取了有偏t分布下的GARCH(1,1)模型。并对模型拟合的精确度进行了检验，结
+果表明模型能够有效的拟合创业板指的波动特征，创业板指数对数收益率具有明显的波动集
+聚性，并且这种波动具有一定的持续性，表现为在一段时间过后才逐渐开始衰减，说明我国创
+业板指数在面对波动时不能及时自我调节，短时间无法恢复稳定。
 
 # 参考文献
-[//]: # (\bibliography{Bibfile})
+
+[//]:(\bibliography{ref})
